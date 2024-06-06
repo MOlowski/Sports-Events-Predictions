@@ -3,6 +3,7 @@ version: '3'
 services:
   sportseventspredictions:
     build: ./apache_airflow
+    restart: always
     volumes:
       - ./apache_airflow/dags:/opt/airflow/dags
       - ./apache_airflow/scripts:/opt/airflow/scripts
@@ -10,6 +11,7 @@ services:
       - ./apache_airflow/airflow/airflow.cfg:/opt/airflow/airflow.cfg
     environment:
       - PYTHONPATH=/opt/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
 
     ports:
       - "8080:8080"

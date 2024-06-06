@@ -1,12 +1,15 @@
 from datetime import timedelta, datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from scripts.historical_functions import get_data, get_matches, encode_data, encode_fix_stats, data_to_sql, get_and_preproc_historical_data, send_to_postgresql_historical_data
+from airflow.utils.dates import days_ago
+from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
 
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
+    'email_on_failure': False,
+    'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
 }
@@ -15,8 +18,8 @@ dag = DAG(
     'historical_data_dag',
     default_args = default_args,
     description = 'DAG collecting past data',
-    schedule_interval = timedelta(days=1),
-    start_date = datetime(2024, 6, 5),
+    schedule_interval = '@daily',
+    start_date = days_ago(1),
     catchup = False,
 )
 
@@ -46,7 +49,7 @@ get_preprocess_past_data_task = PythonOperator(
 
 send_to_postgresql_historical_data_task = PythonOperator(
     task_id = 'send_to_postgresql_historical_data',
-    python_callable = send_to_postgresql_historical_data,
+    python_callable = send_to_db,
     provide_context = True,
     dag = dag,
 )

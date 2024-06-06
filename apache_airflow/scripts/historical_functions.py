@@ -72,7 +72,8 @@ def data_to_sql(table_name, df, db_params, conflict_columns):
         # Establish the connection
         conn = psycopg2.connect(**db_params)
         cur = conn.cursor()
-        
+        last_row=None
+
         #insert data into tables
         if len(conflict_columns) == 0:
             insert_query = """
@@ -105,11 +106,11 @@ def data_to_sql(table_name, df, db_params, conflict_columns):
             conn.close()
 
 # get list of matches to collect matches stats
-def get_matches(db_params):
+def get_matches(db_params, european_seasons):
     query = '''
-    SELECT fixture_id
+    SELECT fixture_id, league_id, league_season
     FROM fixtures
-    WHERE fixture_status_short = 'FT' or fixture_status_short = 'WO' or fixture_status_short = 'AET' or fixture_status_short = 'PEN' or fixture_status_short = 'CANC'
+    WHERE fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
     '''
     res = []
     conn = None
@@ -120,8 +121,21 @@ def get_matches(db_params):
         cur = conn.cursor()
 
         cur.execute(query)
-        res = [row[0] for row in cur.fetchall()]
-    
+        cols = [row[0] for row in cur.description]
+        res = [dict(zip(cols, row)) for row in cur.fetchall()]
+
+        res_f = [
+            fixture['fixture_id'] 
+            for fixture in res 
+            if not european_seasons[
+                (european_seasons['league_id']==fixture['league_id'])&
+                (european_seasons['league_season']==fixture['league_season'])
+            ].empty and european_seasons[
+                (european_seasons['league_id']==fixture['league_id'])&
+                (european_seasons['league_season']==fixture['league_season'])
+            ]['fixtures_statistics'].iloc[0]
+        ]
+
     except Exception as e:
         print(f'Error {e} occured')
 
@@ -131,7 +145,7 @@ def get_matches(db_params):
         if conn is not None:
             conn.close()
             
-        return res
+        return res_f
     
 # get past data about teams and matches
 def get_and_preproc_historical_data():
@@ -152,6 +166,7 @@ def get_and_preproc_historical_data():
     total_team_stats_data = []
     total_teams_data = []
     total_fixtures_data = []
+    total_fix_stats_data = []
 
     if index == len(european_seasons)-1:
         done = True
@@ -183,7 +198,7 @@ def get_and_preproc_historical_data():
                 'season': year,
                 'team': team
                     }
-            print(f'team {team} stats from {year}, {len(teams_list)} teams left')
+            print(f'team {team} stats from {year} league {league}, {len(teams_list)} teams left')
         else:
             params = {
                 'league': league,
@@ -199,7 +214,7 @@ def get_and_preproc_historical_data():
             total_teams_data.extend(encode_data(team) for team in data['response'])
             to_find = 'fixtures'
             teams_list = [row['team']['id'] for row in data['response']]
-
+        
         # find all fixtures played in each league in each season
         elif endpoint == 'fixtures':
             total_fixtures_data.extend(encode_data(fix) for fix in data['response'])
@@ -223,7 +238,7 @@ def get_and_preproc_historical_data():
                 to_find = 'teams'
 
             # if data for all seasons were collected quit loop
-            else:
+            if (len(teams_list) == 0) & (index >= len(european_seasons)-1):
                 done = True
                 to_find = 'fixtures/statistics'
             
@@ -243,8 +258,16 @@ def get_and_preproc_historical_data():
 
     # if all teams, teams statistics and fixtures were collected get fixtures stats
     if to_find == 'fixtures/statistics':
-        total_fix_stats_data = []
+
         endpoint = to_find
+
+        db_params = {
+            'host': 'postgres',
+            'database': 'preds',
+            'user': 'postgres',
+            'password': 'pass',
+            'port': '5432'
+        }
 
         matches_path = '/opt/airflow/data/matches.json'
         with open(matches_path, 'r') as file:
@@ -252,9 +275,13 @@ def get_and_preproc_historical_data():
 
         # if there are no fixtures ids in list get fixtures ids from fixtures table
         if len(matches) == 0:
-            matches = get_matches()
+
+            matches = get_matches(db_params, european_seasons)
+
         # if all fixtures stats were collected list contains only 'done'
         if matches[0] == 'done':
+
+            future_engineering(db_params)
             print('matches statistics collected')
         else:
             while (len(matches) > 0) & (remaining > 0):
@@ -273,21 +300,29 @@ def get_and_preproc_historical_data():
     current = pd.DataFrame(data)
     current.to_csv(current_path)
 
-    return total_teams_data, total_fix_stats_data, total_fixtures_data, total_team_stats_data
+    if len(total_team_stats_data) > 0:
+        total_team_stats_data = pd.DataFrame(total_team_stats_data)
+    if len(total_teams_data) > 0:
+        total_teams_data = pd.DataFrame(total_teams_data)
+    if len(total_fixtures_data) > 0:
+        total_fixtures_data = pd.DataFrame(total_fixtures_data)
+    if len(total_fix_stats_data) > 0:
+        total_fix_stats_data = pd.DataFrame(total_fix_stats_data)
+
+    return total_teams_data, total_team_stats_data, total_fixtures_data, total_fix_stats_data
 
 # send collected data to PostgreSQL dbs
-def send_to_postgresql_historical_data(teams_data, team_stats_data, fixtures_data, fix_stats_data):
+def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fixture_stats_df):
     
     db_params = {
-        'host': 'localhost',
+        'host': 'postgres',
         'database': 'preds',
         'user': 'postgres',
         'password': 'pass',
         'port': '5432'
     }
 
-    if len(team_stats_data) > 0:
-        team_stats_df = pd.DataFrame(team_stats_data)
+    if len(team_stats_df) > 0:
         team_stats_df = team_stats_df.drop(columns = {
             'league_name', 
             'league_country', 
@@ -302,8 +337,7 @@ def send_to_postgresql_historical_data(teams_data, team_stats_data, fixtures_dat
         data_to_sql('team_stats', team_stats_df, db_params, conflict_col)
         print('team stats data send')
 
-    if len(teams_data) > 0:
-        teams_df = pd.DataFrame(teams_data)
+    if len(teams_df) > 0:
         teams_df = teams_df[['team_id', 
                             'team_name', 
                             'team_country', 
@@ -315,8 +349,7 @@ def send_to_postgresql_historical_data(teams_data, team_stats_data, fixtures_dat
         data_to_sql('teams', teams_df, db_params, conflict_col)
         print('team data send')
 
-    if len(fixtures_data) > 0:
-        fixtures_df = pd.DataFrame(fixtures_data)
+    if len(fixtures_df) > 0:
         fixtures_df = fixtures_df.drop(columns = {
             'fixture_timezone',
             'fixture_timestamp', 
@@ -336,9 +369,168 @@ def send_to_postgresql_historical_data(teams_data, team_stats_data, fixtures_dat
         data_to_sql('fixtures', fixtures_df, db_params, conflict_col)
         print('fixtures data send')
 
-    if len(fix_stats_data) > 0:
-        fixture_stats_df = pd.DataFrame(fix_stats_data)
+    if len(fixture_stats_df) > 0:
         conflict_col = ['fixture_id', 'team_id']
         data_to_sql('fixture_statistics', fixture_stats_df, db_params, conflict_col)
         print('fixtures stats data send')
+
+# add statistics values to fixtures table (points, goals, standings)
+def add_statistics(fixtures_df):
+        
+    fixtures_df['fixture_date'] = pd.to_datetime(fixtures_df['fixture_date']).dt.date
+    fixtures_df = fixtures_df.sort_values(by='fixtures_date')
+    fixtures_df['teams_home_goals_scored_home'] = fixtures_df.groupby('team_home_id')['goals_home'].cumsum()
+    fixtures_df['teams_home_goals_scored_away'] = fixtures_df.groupby('team_away_id')['goals_away'].cumsum()
+    fixtures_df['teams_away_goals_lost_home'] = fixtures_df.groupby('team_home_id')['goals_away'].cumsum()
+    fixtures_df['teams_away_goals_lost_away'] = fixtures_df.groupby('team_away_id')['goals_home'].cumsum()
+
+    home = fixtures_df[[
+        'fixture_date', 
+        'teams_home_id', 
+        'goals_home',
+        'goals_away',
+        'teams_home_winner', 
+        'league_round'
+        ]].rename(columns={
+        'teams_home_id':'team_id',
+        'goals_home':'goals_scored',
+        'goals_away':'goals_lost',
+        'teams_home_winner':'points'
+        })
+    away = fixtures_df[[
+        'fixture_date', 
+        'teams_away_id', 
+        'goals_away',
+        'goals_home',
+        'teams_away_winner', 
+        'league_round'
+        ]].rename(columns={
+        'teams_away_id':'team_id', 
+        'goals_away':'goals_scored',
+        'goals_home':'goals_lost',
+        'teams_away_winner':'points'
+        })
+
+    total = pd.concat([home, away])
+    total = total.sort_values(by='fixture_date')
+    total['total_goals_scored'] = total[['fixture_date','team_id','goals_scored']].groupby('team_id')['goals_scored'].cumsum()
+    total['total_goals_lost'] = total[['fixture_date','team_id','goals_lost']].groupby('team_id')['goals_lost'].cumsum()
     
+    #function to replace winners value True False None to points 3, 1, 0
+    def logic(x):
+        if x==True:
+            return 3
+        elif x==False:
+            return 0
+        else:
+            return 1
+    
+    total = pd.concat([home, away])
+    total = total.sort_values(by='fixture_date')
+    total['total_goals_scored'] = total[['fixture_date','team_id','goals_scored']].groupby('team_id')['goals_scored'].cumsum()
+    total['total_goals_lost'] = total[['fixture_date','team_id','goals_lost']].groupby('team_id')['goals_lost'].cumsum()
+
+    total = total.sort_values(by='fixture_date')
+    total['points'] = total['points'].apply(logic)
+    total['total_points'] = total[['fixture_date', 'team_id', 'league_round', 'points']].groupby('team_id')['points'].cumsum()
+
+    total.sort_values(by=['league_round','total_points','total_goals_scored','fixture_date'], ascending=[True,False,False,True])
+    total['standings'] = total.groupby('league_round')['total_points'].rank(method='min', ascending=False)
+    total['standings'] = total['standings'].astype(int)
+
+    total = total.sort_values(by=['team_id','fixture_date'])
+    total['points_last_5_matches'] = total.groupby('team_id')['points'].rolling(window=5, min_periods=1).sum().reset_index(level=0, drop=True)
+    total['points_last_5_matches'] = total['points_last_5_matches'].fillna(0)
+    total['points_last_5_matches'] = total['points_last_5_matches'].astype(int)
+
+    fixtures_df = fixtures_df.merge(total[[
+        'fixture_date',
+        'team_id',
+        'total_goals_scored',
+        'total_goals_lost', 
+        'points', 
+        'total_points', 
+        'standings',
+        'points_last_5_matches'
+        ]], left_on = [
+            'fixture_date',
+            'teams_home_id'
+            ],right_on = [
+            'fixture_date',
+            'team_id'
+            ], how='left'
+            ).rename(columns={
+                'total_goals_scored':'teams_home_total_goals_scored',
+                'total_goals_lost':'teams_home_total_goals_lost',
+                'points':'teams_home_points',
+                'total_points':'teams_home_total_points',
+                'standings':'teams_home_standings',
+                'points_last_5_matches':'teams_home_last_five_matches_points'
+            }).drop(columns='team_id')
+    
+    fixtures_df = fixtures_df.merge(total[[
+        'fixture_date',
+        'team_id',
+        'total_goals_scored',
+        'total_goals_lost', 
+        'points', 
+        'total_points', 
+        'standings',
+        'points_last_5_matches'
+        ]], left_on = [
+            'fixture_date',
+            'teams_away_id'
+            ],right_on = [
+            'fixture_date',
+            'team_id'
+            ], how='left'
+            ).rename(columns={
+                'total_goals_scored':'teams_away_total_goals_scored',
+                'total_goals_lost':'teams_away_total_goals_lost',
+                'points':'teams_away_points',
+                'total_points':'teams_away_total_points',
+                'standings':'teams_away_standings',
+                'points_last_5_matches':'teams_away_last_five_matches_points'
+            }).drop(columns='team_id')
+    
+    return fixtures_df
+
+# add stats to fixtures table and save it in fixtures update table
+def future_engineering(db_params):
+    conn = None
+    cur = None
+    fixtures_df = None
+    conflict_columns = ['fixture_id']
+    try:
+        conn = psycopg2.connect(db_params)
+
+        query = '''
+        SELECT *
+        FROM fixtures
+        '''
+        
+        fixtures_df = pd.read_sql_query(query, conn)
+        
+        df = add_statistics(fixtures_df)
+
+        insert_query = """
+            INSERT INTO {} ({})
+            VALUES ({})
+            ON CONFLICT ({}) DO NOTHING
+        """.format('fixtures_updated', ','.join(df.columns), ','.join(['%s']*len(df.columns)), ','.join(conflict_columns))
+
+        cur.executemany(insert_query, df.values.tolist())
+        print(f'table fixtures_updated updated')
+        
+        # Commit the changes
+        conn.commit()
+
+    except Exception as e:
+        print(f'Error {e}')
+    
+    finally:
+        if conn is not None:
+            # Close the cursor and connection
+            cur.close()
+        if cur is not None:
+            conn.close()
