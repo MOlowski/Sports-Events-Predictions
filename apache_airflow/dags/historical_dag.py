@@ -3,7 +3,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
-
+from airflow.hooks.postgres_hook import PostgresHook
 
 default_args = {
     'owner': 'airflow',

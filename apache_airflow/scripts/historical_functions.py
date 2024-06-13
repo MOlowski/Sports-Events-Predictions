@@ -5,6 +5,7 @@ import pandas as pd
 import json
 import os
 import time
+from airflow.hooks.postgres_hook import PostgresHook
 
 # function requesting data from Football API
 def get_data(endpoint, params):
@@ -65,14 +66,13 @@ def encode_fix_stats(data, fixture_id):
     return dict(encoded)
 
 # function sending data to PostgreSQL db
-def data_to_sql(table_name, df, db_params, conflict_columns):
+def data_to_sql(table_name, df, pg_hook, conflict_columns, update_columns = None):
     conn = None
     cur = None
     try:
         # Establish the connection
-        conn = psycopg2.connect(**db_params)
+        conn = pg_hook.get_conn()
         cur = conn.cursor()
-        last_row=None
 
         #insert data into tables
         if len(conflict_columns) == 0:
@@ -81,13 +81,20 @@ def data_to_sql(table_name, df, db_params, conflict_columns):
                 VALUES ({})
             """.format(table_name, ','.join(df.columns), ','.join(['%s']*len(df.columns)))
         else:
-            insert_query = """
-                INSERT INTO {} ({})
-                VALUES ({})
-                ON CONFLICT ({}) DO NOTHING
-            """.format(table_name, ','.join(df.columns), ','.join(['%s']*len(df.columns)), ','.join(conflict_columns))
-        if len(df) > 0:
-            last_row = df.iloc[-1]
+            if update_columns:
+                update_set = ', '.join([f"{col} = EXCLUDED.{col}" for col in update_columns])
+                insert_query = """
+                    INSERT INTO {} ({})
+                    VALUES ({})
+                    ON CONFLICT ({}) DO UPDATE SET {}
+                """.format(table_name, ','.join(df.columns), ','.join(['%s']*len(df.columns)), ','.join(conflict_columns), update_set)
+
+            else:
+                insert_query = """
+                    INSERT INTO {} ({})
+                    VALUES ({})
+                    ON CONFLICT ({}) DO NOTHING
+                """.format(table_name, ','.join(df.columns), ','.join(['%s']*len(df.columns)), ','.join(conflict_columns))
         cur.executemany(insert_query, df.values.tolist())
         print(f'table {table_name} updated')
         
@@ -96,8 +103,8 @@ def data_to_sql(table_name, df, db_params, conflict_columns):
         
     except Exception as e:
         print(f"Error: {e}")
-        if last_row is not None:
-            print(f"Last row loaded before the error occurred: {last_row}")
+        if conn is not None:
+            conn.rollback()
     finally:
         if conn is not None:
             # Close the cursor and connection
@@ -106,7 +113,7 @@ def data_to_sql(table_name, df, db_params, conflict_columns):
             conn.close()
 
 # get list of matches to collect matches stats
-def get_matches(db_params, european_seasons):
+def get_matches(pg_hook, european_seasons):
     query = '''
     SELECT fixture_id, league_id, league_season
     FROM fixtures
@@ -117,7 +124,7 @@ def get_matches(db_params, european_seasons):
     cur = None
     
     try:
-        conn = psycopg2.connect(db_params)
+        conn = psycopg2.connect(pg_hook)
         cur = conn.cursor()
 
         cur.execute(query)
@@ -261,13 +268,7 @@ def get_and_preproc_historical_data():
 
         endpoint = to_find
 
-        db_params = {
-            'host': 'postgres',
-            'database': 'preds',
-            'user': 'postgres',
-            'password': 'pass',
-            'port': '5432'
-        }
+        pg_hook = PostgresHook(postgres_conn_id='postgres_default')
 
         matches_path = '/opt/airflow/data/matches.json'
         with open(matches_path, 'r') as file:
@@ -276,12 +277,12 @@ def get_and_preproc_historical_data():
         # if there are no fixtures ids in list get fixtures ids from fixtures table
         if len(matches) == 0:
 
-            matches = get_matches(db_params, european_seasons)
+            matches = get_matches(pg_hook, european_seasons)
 
         # if all fixtures stats were collected list contains only 'done'
         if matches[0] == 'done':
 
-            future_engineering(db_params)
+            future_engineering(pg_hook)
             print('matches statistics collected')
         else:
             while (len(matches) > 0) & (remaining > 0):
@@ -290,8 +291,8 @@ def get_and_preproc_historical_data():
                 df, remaining = get_data(endpoint, params)
                 total_fix_stats_data.extend(encode_fix_stats(row, fixture) for row in df['response'])
                 matches.pop(0)
-            if len(matches) == 0:
-                matches[0] = 'done'
+                if len(matches) == 0:
+                    matches[0] = 'done'
 
             with open(matches_path, 'w') as file:
                 json.dump(teams_list, file)
@@ -314,28 +315,7 @@ def get_and_preproc_historical_data():
 # send collected data to PostgreSQL dbs
 def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fixture_stats_df):
     
-    db_params = {
-        'host': 'postgres',
-        'database': 'preds',
-        'user': 'postgres',
-        'password': 'pass',
-        'port': '5432'
-    }
-
-    if len(team_stats_df) > 0:
-        team_stats_df = team_stats_df.drop(columns = {
-            'league_name', 
-            'league_country', 
-            'league_logo', 
-            'league_flag', 
-            'team_name', 
-            'team_logo',
-            'lineups'})
-        team_stats_df = team_stats_df.fillna(0)
-        conflict_col = []
-        team_stats_df.columns = team_stats_df.columns.str.replace('-','_')
-        data_to_sql('team_stats', team_stats_df, db_params, conflict_col)
-        print('team stats data send')
+    pg_hook = PostgresHook(postgres_conn_id='postgres_default')
 
     if len(teams_df) > 0:
         teams_df = teams_df[['team_id', 
@@ -346,8 +326,31 @@ def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fix
                             'venue_capacity', 
                             'venue_surface']].rename(columns = {'team_national': 'national'})
         conflict_col = ['team_id']
-        data_to_sql('teams', teams_df, db_params, conflict_col)
+        data_to_sql('teams', teams_df, pg_hook, conflict_col)
         print('team data send')
+
+    if len(team_stats_df) > 0:
+
+        col_to_drop = [col for col in team_stats_df.columns if col.startswith('lineups')]
+
+        columns_drop = [
+            'league_name', 
+            'league_country', 
+            'league_logo', 
+            'league_flag', 
+            'team_name', 
+            'team_logo',
+            'cards_yellow__total',
+            'cards_yellow__percentage',
+            'cards_red__total',
+            'cards_red__percentage'
+        ] + col_to_drop
+        team_stats_df = team_stats_df.drop(columns = columns_drop, errors='ignore')
+        team_stats_df = team_stats_df.fillna(0)
+        conflict_col = []
+        team_stats_df.columns = team_stats_df.columns.str.replace('-','_')
+        data_to_sql('team_stats', team_stats_df, pg_hook, conflict_col)
+        print('team stats data send')
 
     if len(fixtures_df) > 0:
         fixtures_df = fixtures_df.drop(columns = {
@@ -365,13 +368,14 @@ def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fix
             'teams_away_name',
             'teams_home_logo',
             'teams_home_name'})
+        fixtures_df = fixtures_df.fillna(0)
         conflict_col = ['fixture_id']
-        data_to_sql('fixtures', fixtures_df, db_params, conflict_col)
+        data_to_sql('fixtures', fixtures_df, pg_hook, conflict_col)
         print('fixtures data send')
 
     if len(fixture_stats_df) > 0:
         conflict_col = ['fixture_id', 'team_id']
-        data_to_sql('fixture_statistics', fixture_stats_df, db_params, conflict_col)
+        data_to_sql('fixture_statistics', fixture_stats_df, pg_hook, conflict_col)
         print('fixtures stats data send')
 
 # add statistics values to fixtures table (points, goals, standings)
@@ -379,13 +383,14 @@ def add_statistics(fixtures_df):
         
     fixtures_df['fixture_date'] = pd.to_datetime(fixtures_df['fixture_date']).dt.date
     fixtures_df = fixtures_df.sort_values(by='fixtures_date')
-    fixtures_df['teams_home_goals_scored_home'] = fixtures_df.groupby('team_home_id')['goals_home'].cumsum()
-    fixtures_df['teams_home_goals_scored_away'] = fixtures_df.groupby('team_away_id')['goals_away'].cumsum()
-    fixtures_df['teams_away_goals_lost_home'] = fixtures_df.groupby('team_home_id')['goals_away'].cumsum()
-    fixtures_df['teams_away_goals_lost_away'] = fixtures_df.groupby('team_away_id')['goals_home'].cumsum()
+    fixtures_df['teams_home_goals_scored_home'] = fixtures_df.groupby(['league_season', 'team_home_id'])['goals_home'].cumsum()
+    fixtures_df['teams_home_goals_scored_away'] = fixtures_df.groupby(['league_season','team_away_id'])['goals_away'].cumsum()
+    fixtures_df['teams_away_goals_lost_home'] = fixtures_df.groupby(['league_season','team_home_id'])['goals_away'].cumsum()
+    fixtures_df['teams_away_goals_lost_away'] = fixtures_df.groupby(['league_season','team_away_id'])['goals_home'].cumsum()
 
     home = fixtures_df[[
-        'fixture_date', 
+        'fixture_date',
+        'league_season',
         'teams_home_id', 
         'goals_home',
         'goals_away',
@@ -399,6 +404,7 @@ def add_statistics(fixtures_df):
         })
     away = fixtures_df[[
         'fixture_date', 
+        'league_season',
         'teams_away_id', 
         'goals_away',
         'goals_home',
@@ -413,8 +419,8 @@ def add_statistics(fixtures_df):
 
     total = pd.concat([home, away])
     total = total.sort_values(by='fixture_date')
-    total['total_goals_scored'] = total[['fixture_date','team_id','goals_scored']].groupby('team_id')['goals_scored'].cumsum()
-    total['total_goals_lost'] = total[['fixture_date','team_id','goals_lost']].groupby('team_id')['goals_lost'].cumsum()
+    total['total_goals_scored'] = total[['fixture_date','league_season','team_id','goals_scored']].groupby(['league_season','team_id'])['goals_scored'].cumsum()
+    total['total_goals_lost'] = total[['fixture_date','league_season','team_id','goals_lost']].groupby(['league_season','team_id'])['goals_lost'].cumsum()
     
     #function to replace winners value True False None to points 3, 1, 0
     def logic(x):
@@ -425,17 +431,12 @@ def add_statistics(fixtures_df):
         else:
             return 1
     
-    total = pd.concat([home, away])
-    total = total.sort_values(by='fixture_date')
-    total['total_goals_scored'] = total[['fixture_date','team_id','goals_scored']].groupby('team_id')['goals_scored'].cumsum()
-    total['total_goals_lost'] = total[['fixture_date','team_id','goals_lost']].groupby('team_id')['goals_lost'].cumsum()
-
     total = total.sort_values(by='fixture_date')
     total['points'] = total['points'].apply(logic)
-    total['total_points'] = total[['fixture_date', 'team_id', 'league_round', 'points']].groupby('team_id')['points'].cumsum()
+    total['total_points'] = total[['fixture_date', 'league_season', 'team_id', 'league_round', 'points']].groupby(['league_season','team_id'])['points'].cumsum()
 
-    total.sort_values(by=['league_round','total_points','total_goals_scored','fixture_date'], ascending=[True,False,False,True])
-    total['standings'] = total.groupby('league_round')['total_points'].rank(method='min', ascending=False)
+    total.sort_values(by=['league_season','league_round','total_points','total_goals_scored','fixture_date'], ascending=[True,True,False,False,True])
+    total['standings'] = total.groupby(['league_season','league_round'])['total_points'].rank(method='min', ascending=False)
     total['standings'] = total['standings'].astype(int)
 
     total = total.sort_values(by=['team_id','fixture_date'])
@@ -496,13 +497,13 @@ def add_statistics(fixtures_df):
     return fixtures_df
 
 # add stats to fixtures table and save it in fixtures update table
-def future_engineering(db_params):
+def future_engineering(pg_hook):
     conn = None
     cur = None
     fixtures_df = None
     conflict_columns = ['fixture_id']
     try:
-        conn = psycopg2.connect(db_params)
+        conn = psycopg2.connect(pg_hook)
 
         query = '''
         SELECT *

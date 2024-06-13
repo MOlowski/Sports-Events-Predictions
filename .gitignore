@@ -1,4 +1,4 @@
 venv/
 postgres-data/
-airflow/
 apache_airflow/airflow/
+backups/
