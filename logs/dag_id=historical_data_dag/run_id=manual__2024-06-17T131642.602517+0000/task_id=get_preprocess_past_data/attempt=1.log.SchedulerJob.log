@@ -1,0 +1,1 @@
+[2024-06-17T13:28:55.194+0000] {scheduler_job_runner.py:769} ERROR - Executor reports task instance <TaskInstance: historical_data_dag.get_preprocess_past_data manual__2024-06-17T13:16:42.602517+00:00 [queued]> finished (failed) although the task says it's queued. (Info: None) Was the task killed externally?

@@ -131,6 +131,14 @@ def get_matches(pg_hook, european_seasons):
         cols = [row[0] for row in cur.description]
         res = [dict(zip(cols, row)) for row in cur.fetchall()]
 
+        # filter if league has fixtures stats available
+        s_path = '/opt/airflow/data/seasons.csv'
+        seasons = pd.read_csv(s_path)
+        valid_leagues_seasons = set(zip(seasons[seasons['statistics_fixtures'] == True]['league_id'], 
+                                seasons[seasons['statistics_fixtures'] == True]['league_season']))
+
+        res = [row for row in res if (row['league_id'], row['league_season']) in valid_leagues_seasons]
+
         res_f = [
             fixture['fixture_id'] 
             for fixture in res 
@@ -153,7 +161,7 @@ def get_matches(pg_hook, european_seasons):
             conn.close()
             
         return res_f
-    
+
 # get past data about teams and matches
 def get_and_preproc_historical_data():
     current_path = '/opt/airflow/data/current.csv'
@@ -169,7 +177,7 @@ def get_and_preproc_historical_data():
     # get current index
     index = np.where((european_seasons['league_id']==league)&(european_seasons['year']==year))[0][0]
 
-    remaining = 100
+    remaining = 10000
     total_team_stats_data = []
     total_teams_data = []
     total_fixtures_data = []
@@ -252,7 +260,7 @@ def get_and_preproc_historical_data():
         remaining = int(remaining_req)
         print(remaining)
         # sleep cause there can be done only 10 requests per minute
-        time.sleep(7)
+        time.sleep(0.2)
 
     teams_path = '/opt/airflow/data/teams.json'
     with open(teams_path, 'w') as file:
@@ -326,6 +334,7 @@ def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fix
                             'venue_capacity', 
                             'venue_surface']].rename(columns = {'team_national': 'national'})
         conflict_col = ['team_id']
+        teams_df = teams_df.fillna(0)
         data_to_sql('teams', teams_df, pg_hook, conflict_col)
         print('team data send')
 
@@ -535,3 +544,4 @@ def future_engineering(pg_hook):
             cur.close()
         if cur is not None:
             conn.close()
+

@@ -3,7 +3,14 @@ version: '3'
 services:
   sportseventspredictions:
     build: ./apache_airflow
+    depends_on:
+      - postgres
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4g
     volumes:
       - ./apache_airflow/dags:/opt/airflow/dags
       - ./apache_airflow/scripts:/opt/airflow/scripts
@@ -20,7 +27,11 @@ services:
     ports:
       - "8080:8080"
 
-    command: airflow standalone
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com &&
+      airflow standalone"
 
   postgres:
     build: ./postgresql
@@ -42,3 +53,6 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
       - ./backups:/backups
     entrypoint: /bin/sh -c "while true; do pg_dump -U postgres -h postgres preds > /backups/backup_\$(date +\%F_\%T).sql; sleep 86400; done"
+
+volumes:
+  postgres_data:

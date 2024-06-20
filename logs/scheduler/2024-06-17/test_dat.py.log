@@ -1,0 +1,182 @@
+[2024-06-17T13:28:52.129+0000] {processor.py:161} INFO - Started process (PID=159) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:28:52.252+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:28:52.799+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:28:52.772+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:28:53.391+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:28:53.227+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:28:53.402+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:28:53.828+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 1.771 seconds
+[2024-06-17T13:29:25.032+0000] {processor.py:161} INFO - Started process (PID=172) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:29:25.101+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:29:25.208+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:29:25.198+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:29:25.675+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:29:25.605+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:29:25.689+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:29:26.639+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 1.741 seconds
+[2024-06-17T13:29:57.473+0000] {processor.py:161} INFO - Started process (PID=182) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:29:57.504+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:29:57.518+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:29:57.513+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:29:57.672+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:29:57.652+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:29:57.677+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:29:58.173+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.910 seconds
+[2024-06-17T13:30:29.506+0000] {processor.py:161} INFO - Started process (PID=192) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:30:29.556+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:30:29.596+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:30:29.574+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:30:29.844+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:30:29.767+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:30:29.864+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:30:30.507+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 1.442 seconds
+[2024-06-17T13:31:01.152+0000] {processor.py:161} INFO - Started process (PID=202) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:31:01.153+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:31:01.154+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:31:01.154+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:31:01.173+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:31:01.166+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:31:01.174+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:31:01.555+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.409 seconds
+[2024-06-17T13:31:32.093+0000] {processor.py:161} INFO - Started process (PID=212) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:31:32.095+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:31:32.096+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:31:32.095+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:31:32.113+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:31:32.109+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:31:32.115+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:31:32.210+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.123 seconds
+[2024-06-17T13:32:02.507+0000] {processor.py:161} INFO - Started process (PID=222) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:32:02.509+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:32:02.511+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:32:02.510+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:32:02.534+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:32:02.528+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:32:02.536+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:32:02.649+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.159 seconds
+[2024-06-17T13:32:33.139+0000] {processor.py:161} INFO - Started process (PID=232) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:32:33.140+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:32:33.141+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:32:33.140+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:32:33.160+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:32:33.155+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:32:33.162+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:32:33.260+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.129 seconds
+[2024-06-17T13:33:03.501+0000] {processor.py:161} INFO - Started process (PID=242) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:33:03.502+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:33:03.503+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:33:03.503+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:33:03.522+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:33:03.517+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:33:03.524+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:33:03.624+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.130 seconds
+[2024-06-17T13:33:34.128+0000] {processor.py:161} INFO - Started process (PID=252) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:33:34.129+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:33:34.130+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:33:34.130+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:33:34.147+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:33:34.143+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:33:34.149+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:33:34.242+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.123 seconds
+[2024-06-17T13:34:04.691+0000] {processor.py:161} INFO - Started process (PID=262) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:34:04.692+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:34:04.693+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:34:04.693+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:34:04.711+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:34:04.707+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:34:04.713+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:34:04.813+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.128 seconds
+[2024-06-17T13:34:35.259+0000] {processor.py:161} INFO - Started process (PID=272) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:34:35.260+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:34:35.261+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:34:35.261+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:34:35.278+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:34:35.273+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:34:35.280+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:34:35.373+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.121 seconds
+[2024-06-17T13:35:05.741+0000] {processor.py:161} INFO - Started process (PID=282) to work on /opt/airflow/dags/test_dat.py
+[2024-06-17T13:35:05.742+0000] {processor.py:830} INFO - Processing file /opt/airflow/dags/test_dat.py for tasks to queue
+[2024-06-17T13:35:05.743+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:35:05.742+0000] {dagbag.py:545} INFO - Filling up the DagBag from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:35:05.769+0000] {logging_mixin.py:188} INFO - [2024-06-17T13:35:05.763+0000] {dagbag.py:355} ERROR - Failed to import: /opt/airflow/dags/test_dat.py
+Traceback (most recent call last):
+  File "/home/airflow/.local/lib/python3.12/site-packages/airflow/models/dagbag.py", line 351, in parse
+    loader.exec_module(new_module)
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/opt/airflow/dags/test_dat.py", line 5, in <module>
+    from scripts.historical_functions import get_and_preproc_historical_data, send_to_postgresql_historical_data
+ModuleNotFoundError: No module named 'scripts.historical_functions'
+[2024-06-17T13:35:05.772+0000] {processor.py:842} WARNING - No viable dags retrieved from /opt/airflow/dags/test_dat.py
+[2024-06-17T13:35:05.949+0000] {processor.py:183} INFO - Processing /opt/airflow/dags/test_dat.py took 0.216 seconds
