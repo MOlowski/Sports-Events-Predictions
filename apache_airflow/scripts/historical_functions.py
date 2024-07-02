@@ -197,7 +197,7 @@ def get_and_preproc_historical_data():
     else:
         teams_list = []
     # if limit of requests wasnt reached and there is still something to collect enter loop
-    while (done==False)&(remaining > 0):
+    while (done==False)&(remaining > 500):
 
         # get data from API
         if to_find == 'teams': 
@@ -401,7 +401,9 @@ def add_statistics(fixtures_df):
     fixtures_df['teams_home_goals_scored_away'] = fixtures_df.groupby(['league_season','team_away_id'])['goals_away'].apply(lambda x: x.shift().cumsum())
     fixtures_df['teams_away_goals_lost_home'] = fixtures_df.groupby(['league_season','team_home_id'])['goals_away'].apply(lambda x: x.shift().cumsum())
     fixtures_df['teams_away_goals_lost_away'] = fixtures_df.groupby(['league_season','team_away_id'])['goals_home'].apply(lambda x: x.shift().cumsum())
-
+    fixtures_df['teams_home_winner'] = fixtures_df.apply(lambda row: 3 if row['goals_home']>row['goals_away'] else (1 if row['goals_home']==row['goals_away']  else 0), axis=1)
+    fixtures_df['teams_away_winner'] = fixtures_df.apply(lambda row: 0 if row['goals_home']>row['goals_away'] else (1 if row['goals_home']==row['goals_away']  else 3), axis=1)
+    
     home = fixtures_df[[
         'fixture_date',
         'league_season',
@@ -436,17 +438,7 @@ def add_statistics(fixtures_df):
     total['total_goals_scored'] = total[['fixture_date','league_season','team_id','goals_scored']].groupby(['league_season','team_id'])['goals_scored'].apply(lambda x: x.shift().cumsum())
     total['total_goals_lost'] = total[['fixture_date','league_season','team_id','goals_lost']].groupby(['league_season','team_id'])['goals_lost'].apply(lambda x: x.shift().cumsum())
     
-    #function to replace winners value True False None to points 3, 1, 0
-    def logic(x):
-        if x==True:
-            return 3
-        elif x==False:
-            return 0
-        else:
-            return 1
-    
     total = total.sort_values(by='fixture_date')
-    total['points'] = total['points'].apply(logic)
     total['total_points'] = total[['fixture_date', 'league_season', 'team_id', 'league_round', 'points']].groupby(['league_season','team_id'])['points'].apply(lambda x: x.shift().cumsum())
 
     total.sort_values(by=['league_season','league_round','total_points','total_goals_scored','fixture_date'], ascending=[True,True,False,False,True])
@@ -517,7 +509,7 @@ def future_engineering(pg_hook):
     fixtures_df = None
     conflict_columns = ['fixture_id']
     try:
-        conn = psycopg2.connect(pg_hook)
+        conn = pg_hook.get_conn()
 
         query = '''
         SELECT *

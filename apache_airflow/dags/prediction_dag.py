@@ -22,41 +22,41 @@ dag = DAG(
     catchup = False,
 )
 
-def get_preprocess_data(**kwargs):
+def preprocess_data(**kwargs):
     predict_df = get_preprocess_data()
     ti = kwargs['ti']
     ti.xcom_push(key='df_to_predict', value = predict_df)
 
-def predict(**kwargs):
+def prediction(**kwargs):
     ti = kwargs['ti']
-    predict_df = ti.xcom_pull(key='df_to_predict', task_ids = 'get_current_last_matches')
+    predict_df = ti.xcom_pull(key='df_to_predict', task_ids = 'preprocess_data')
     predictions = predict(predict_df)
     ti.xcom_push(key='predictions_df', value = predictions)
 
-def send_to_sql(**kwargs):
+def send_predictions_to_sql(**kwargs):
     ti = kwargs['ti']
-    predictions = ti.xcom_pull(key='predictions_df', task_ids = 'predict')
+    predictions = ti.xcom_pull(key='predictions_df', task_ids = 'prediction')
     send_to_sql(predictions)
 
-get_preprocess_data_task = PythonOperator(
-    task_id = 'get_preprocess_data',
-    python_callable = get_preprocess_data,
+preprocess_data_task = PythonOperator(
+    task_id = 'preprocess_data',
+    python_callable = preprocess_data,
     provide_context = True,
     dag = dag,
 )
 
 predict_task = PythonOperator(
-    task_id = 'predict',
-    python_callable = predict,
+    task_id = 'prediction',
+    python_callable = prediction,
     provide_context = True,
     dag = dag,
 )
 
 send_to_sql_task = PythonOperator(
     task_id = 'send_to_sql',
-    python_callable = send_to_sql,
+    python_callable = send_predictions_to_sql,
     provide_context = True,
     dag = dag,
 )
 
-get_preprocess_data_task >> predict_task >> send_to_sql_task
+preprocess_data_task >> predict_task >> send_to_sql_task

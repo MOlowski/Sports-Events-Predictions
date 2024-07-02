@@ -13,16 +13,17 @@ def get_current_matches():
     conn = None
     #get next friday and monday dates as start and end for query
     t = date.today()
+    print('today', t)
     start_date = t+datetime.timedelta(1) if t.weekday() == 4 else t
-    end_date = t+datetime.timedelta(1) if t.weekday() == 0 else t
     while start_date.weekday() != 4:
-        start_date += datetime.timedelta(1)
+        start_date = start_date+datetime.timedelta(1)
+    end_date = start_date
     while end_date.weekday() != 0:
-        end_date += datetime.timedelta(1)
-        
+        end_date = end_date+datetime.timedelta(1)
+    print('matches from', start_date, 'to', end_date)
     # get upocoming matches playing from next friday to monday
     try:
-        conn = psycopg2.connect(pg_hook)
+        conn = pg_hook.get_conn()
 
         query = '''
     SELECT * 
@@ -30,7 +31,7 @@ def get_current_matches():
     WHERE fixture_date >= '{}' and fixture_date <= '{}' and fixture_status_short = 'NS'
     '''.format(start_date, end_date)
         current_matches = pd.read_sql_query(query, conn)
-        
+        print('got current matches')
         return current_matches
     except Exception as e:
         print(f'Error {e}')
@@ -48,21 +49,21 @@ def get_last_matches(leagues, seasons):
     t = date.today()
     end_date = t+datetime.timedelta(1) if t.weekday() == 0 else t
     while end_date.weekday() != 0:
-        end_date += datetime.timedelta(1)
+        end_date = end_date+datetime.timedelta(1)
         
     # get upocoming matches playing from next friday to monday
     try:
-        conn = psycopg2.connect(pg_hook)
+        conn = pg_hook.get_conn()
         last_matches_date = end_date-datetime.timedelta(14)
-        leagues_str = ', '.join(map(str, leagues))
-        seasons_str = ', '.join("'{}'".format(str(season)) for season in seasons)
         query2 = '''
     SELECT *
     FROM fixtures
-    WHERE fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC') AND league_id IN ({}) AND league_season IN ({}) 
-    '''.format(leagues_str, seasons_str)
-        last_matches = pd.read_sql_query(query2, conn)
-        
+    WHERE fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC') 
+    AND league_id = ANY(%s) 
+    AND league_season = ANY(%s) 
+    '''
+        last_matches = pd.read_sql_query(query2, conn, params=(leagues, seasons))
+        print('got last matches')
         return last_matches, last_matches_date
     except Exception as e:
         print(f'Error {e}')
@@ -77,10 +78,11 @@ def add_statistics(fixtures_df):
     fixtures_df['fixture_date'] = pd.to_datetime(fixtures_df['fixture_date']).dt.date
     fixtures_df = fixtures_df.sort_values(by='fixture_date')
     fixtures_df['teams_home_goals_scored_home'] = fixtures_df.groupby(['league_season', 'teams_home_id'])['goals_home'].cumsum()
-    fixtures_df['teams_home_goals_scored_away'] = fixtures_df.groupby(['league_season','teams_away_id'])['goals_away'].cumsum()
-    fixtures_df['teams_away_goals_lost_home'] = fixtures_df.groupby(['league_season','teams_home_id'])['goals_away'].cumsum()
+    fixtures_df['teams_away_goals_scored_away'] = fixtures_df.groupby(['league_season','teams_away_id'])['goals_away'].cumsum()
+    fixtures_df['teams_home_goals_lost_home'] = fixtures_df.groupby(['league_season','teams_home_id'])['goals_away'].cumsum()
     fixtures_df['teams_away_goals_lost_away'] = fixtures_df.groupby(['league_season','teams_away_id'])['goals_home'].cumsum()
-
+    fixtures_df['teams_home_winner'] = fixtures_df.apply(lambda row: 3 if row['goals_home']>row['goals_away'] else (1 if row['goals_home']==row['goals_away']  else 0), axis=1)
+    fixtures_df['teams_away_winner'] = fixtures_df.apply(lambda row: 0 if row['goals_home']>row['goals_away'] else (1 if row['goals_home']==row['goals_away']  else 3), axis=1)
     home = fixtures_df[[
         'fixture_date',
         'league_season',
@@ -115,17 +117,7 @@ def add_statistics(fixtures_df):
     total['total_goals_scored'] = total[['fixture_date','league_season','team_id','goals_scored']].groupby(['league_season','team_id'])['goals_scored'].cumsum()
     total['total_goals_lost'] = total[['fixture_date','league_season','team_id','goals_lost']].groupby(['league_season','team_id'])['goals_lost'].cumsum()
     
-    #function to replace winners value True False None to points 3, 1, 0
-    def logic(x):
-        if x==True:
-            return 3
-        elif x==False:
-            return 0
-        else:
-            return 1
-    
     total = total.sort_values(by='fixture_date')
-    total['points'] = total['points'].apply(logic)
     total['total_points'] = total[['fixture_date', 'league_season', 'team_id', 'league_round', 'points']].groupby(['league_season','team_id'])['points'].cumsum()
 
     total.sort_values(by=['league_season','league_round','total_points','total_goals_scored','fixture_date'], ascending=[True,True,False,False,True])
@@ -193,69 +185,75 @@ def add_statistics(fixtures_df):
 def get_preprocess_data():
 
     current = get_current_matches()
-    leagues = list(current['league_id'].unique())
-    seasons = list(current['league_season'].unique())
-    last, end_date = get_last_matches(leagues, seasons)
+    if len(current) == 0:
+        print('no upcoming matches this weekend')
+    else:
+        leagues = list(current['league_id'].unique())
+        seasons = list(current['league_season'].unique())
+        leagues = [int(league) for league in leagues]
+        seasons = [str(season) for season in seasons]
+        last, end_date = get_last_matches(leagues, seasons)
 
-    last = add_statistics(last)
-    last = last[last['fixture_date'] > end_date]
-    # add last match result and goals to columns
+        last = add_statistics(last)
+        last = last[last['fixture_date'] > end_date]
+        # add last match result and goals to columns
 
 
-    # get only matches where teams played in last 14 days
-    teams = list(last['teams_home_id'].unique())
-    teams = teams + list(last['teams_away_id'].unique())
-    teams = list(dict.fromkeys(teams))
-    
-    current = current[(current['teams_home_id'].isin(teams))&(current['teams_away_id'].isin(teams))]
-    
-    # chose only needed columns
-    predict_df = current[['fixture_id', 'fixture_date', 'fixture_venue_id', 'league_id', 'league_season', 'teams_home_id', 'teams_away_id']]
-    
-    # get values needed for prediction from last matches (points, goals, standings, etc.)
-    def team_values(team, column, is_sensitive):
+        # get only matches where teams played in last 14 days
+        teams = list(last['teams_home_id'].unique())
+        teams = teams + list(last['teams_away_id'].unique())
+        teams = list(dict.fromkeys(teams))
+        
+        current = current[(current['teams_home_id'].isin(teams))&(current['teams_away_id'].isin(teams))]
+        
+        # chose only needed columns
+        predict_df = current[['fixture_id', 'fixture_date', 'fixture_venue_id', 'league_id', 'league_season', 'teams_home_id', 'teams_away_id']]
+        
+        # get values needed for prediction from last matches (points, goals, standings, etc.)
+        def team_values(team, column, is_sensitive, last):
 
-        # last match for team
-        matches = last[(last['teams_home_id']==team)|(last['teams_away_id']==team)]
-        last_date_index = matches['fixture_date'].idxmax()
-        last_match = matches.loc[last_date_index]
+            # last match for team
+            matches = last[(last['teams_home_id']==team)|(last['teams_away_id']==team)]
+            if matches.empty:
+                # Handle case where no matches are found for the team
+                return None
+            last_date_index = matches['fixture_date'].idxmax()
+            last_match = matches.loc[last_date_index]
 
-       # return needed column for given team
-        if last_match['teams_home_id']==team:
-            if is_sensitive:
-                return last_match[f'teams_home_{column}_home']
+        # return needed column for given team
+            if last_match['teams_home_id']==team:
+                if is_sensitive:
+                    return last_match[f'teams_home_{column}_home']
+                else:
+                    return last_match[f'teams_home_{column}']
             else:
-                return last_match[f'teams_home_{column}']
-        else:
-            if is_sensitive:
-                return last_match[f'teams_away_{column}_away']
-            else:
-                return last_match[f'teams_away_{column}']
-    cols = [
-        'total_goals_scored', 
-        'total_goals_lost',
-        'total_points', 
-        'standings',
-        'last_five_matches_points']
+                if is_sensitive:
+                    return last_match[f'teams_away_{column}_away']
+                else:
+                    return last_match[f'teams_away_{column}']
+        cols = [
+            'total_goals_scored', 
+            'total_goals_lost',
+            'total_points', 
+            'standings',
+            'last_five_matches_points']
 
-    # create column with values needed for prediction
-    for row in cols:
-        predict_df[f'teams_home_{row}'] = predict_df.apply(lambda x: team_values(x['teams_home_id'], row, False), axis=1)
-    for row in cols:
-        predict_df[f'teams_away_{row}'] = predict_df.apply(lambda x: team_values(x['teams_away_id'], row, False), axis=1)
+        for row in cols:
+            predict_df[f'teams_home_{row}'] = predict_df['teams_home_id'].apply(lambda x: team_values(x, row, False, last))
+            predict_df[f'teams_away_{row}'] = predict_df['teams_away_id'].apply(lambda x: team_values(x, row, False, last))
 
-    sensitive_cols = ['goals_scored', 'goals_lost']
+        sensitive_cols = ['goals_scored', 'goals_lost']
 
-    for row in sensitive_cols:
-        predict_df[f'teams_home_{row}_home'] = predict_df.apply(lambda x: team_values(x['teams_home_id'], row, True), axis=1)
-    for row in sensitive_cols:
-        predict_df[f'teams_away_{row}_away'] = predict_df.apply(lambda x: team_values(x['teams_away_id'], row, True), axis=1)
+        for row in sensitive_cols:
+            predict_df[f'teams_home_{row}_home'] = predict_df['teams_home_id'].apply(lambda x: team_values(x, row, True, last))
+            predict_df[f'teams_away_{row}_away'] = predict_df['teams_away_id'].apply(lambda x: team_values(x, row, True, last))
 
-    return predict_df
+        print(predict_df.head())
+        return predict_df
 
 # function predicting matches
 def predict(predict_df):
-
+    print(predict_df.head())
     # load season df to add league type to predict df
     s_path = '/opt/airflow/data/contests.csv'
     seasons = pd.read_csv(s_path)
@@ -373,7 +371,7 @@ def send_to_sql(df):
     pg_hook = PostgresHook(postgres_conn_id='postgres_default')
     try:
     
-        conn = psycopg2.connect(pg_hook)
+        conn = pg_hook.get_conn()
         cur = conn.cursor()
         
         insert_query = """
