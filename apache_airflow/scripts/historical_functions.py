@@ -1,5 +1,4 @@
 import requests
-import psycopg2
 import numpy as np
 import pandas as pd
 import json

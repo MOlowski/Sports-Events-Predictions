@@ -1,6 +1,7 @@
 from datetime import date
 import pandas as pd
-import psycopg2
+import json
+from airflow.hooks.postgres_hook import PostgresHook
 
 def get_data(endpoint, params):
     
@@ -49,16 +50,10 @@ def encode_data(data_dict, parent_key = '', sep= '_'):
 def data_to_sql(table_name, df, conflict_columns, update_columns = None):
     conn = None
     cur = None
-    params = {
-    'host': 'localhost',
-    'database': 'preds',
-    'user': 'postgres',
-    'password': 'pass',
-    'port': '5432'
-}
+    pg_hook = PostgresHook(postgres_conn_id='postgres_default')
     try:
         # Establish the connection
-        conn = psycopg2.connect(**params)
+        conn = pg_hook.get_conn()
         cur = conn.cursor()
 
         if not update_columns:
@@ -104,8 +99,8 @@ def data_to_sql(table_name, df, conflict_columns, update_columns = None):
 def get_results():
 
     today = date.today()
-    es = pd.read_csv('data/european_seasons.csv')
-    s = pd.read_csv('data/seasons.csv')
+    es = pd.read_csv('/opt/airflow/data/european_seasons.csv')
+    s = pd.read_csv('/opt/airflow/data/seasons.csv')
     seasons = pd.merge(es,s[['league_id','year','start','end']], on = ['league_id', 'year'])
     seasons['start'] = pd.to_datetime(seasons['start']).dt.date
     seasons['end'] = pd.to_datetime(seasons['end']).dt.date
@@ -117,7 +112,7 @@ def get_results():
     done = False
     fix_data = []
 
-    path = 'data/last.json'
+    path = '/opt/airflow/data/last.json'
     with open(path, 'r') as file:
         last = json.load(file)
 
@@ -145,4 +140,6 @@ def get_results():
     df = pd.DataFrame(fix_data)
 
     if len(fix_data) > 0:
-        send_to_sql('fixtures', df, 'fixture_id')
+        update_cols = list(df.columns)
+        update_cols = update_cols - ['fixture_id']
+        data_to_sql('fixtures', df, 'fixture_id', update_cols)

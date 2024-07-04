@@ -2,7 +2,8 @@ from datetime import timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
-from scripts.results_functions import get_results
+from scripts.check_seasons_functions import check
+
 
 default_args = {
     'owner': 'airflow',
@@ -13,25 +14,26 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-dag = DAG(
-    'results_dag',
+dag_check_seasons = DAG(
+    'check_seasons_dag',
     default_args = default_args,
-    description = 'DAG collecting recent results',
-    schedule_interval = '0 0 * * 1,2,3,6',
+    description = 'DAG finding new seasons',
+    schedule_interval = '0 0 * * 0',
     start_date = days_ago(1),
     catchup = False,
 )
 
-def get_recent_results():
-    get_results()
+def checking():
+    check()
 
 
 
-get_recent_results_task = PythonOperator(
-    task_id = 'get_recent_results',
-    python_callable = get_recent_results,
+check_task = PythonOperator(
+    task_id = 'check if there are new seasons',
+    python_callable = checking,
     provide_context = True,
-    dag = dag,
+    dag = dag_check_seasons,
 )
 
-get_recent_results_task
+
+check_task
