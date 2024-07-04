@@ -1,6 +1,7 @@
 from datetime import timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.dummy_operator import DummyOperator
 from airflow.utils.dates import days_ago
 from scripts.odds_functions import get_predicted_matches, get_odds, send_to_sql
 
@@ -13,7 +14,7 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
-dag = DAG(
+dag_odds = DAG(
     'odds_dag',
     default_args = default_args,
     description = 'DAG collecting odds',
@@ -40,25 +41,35 @@ def send_to_postgresql(**kwargs):
     odds_df = ti.xcom_pull(key='odds_df', task_ids = 'collect_odds')
     send_to_sql(odds_df)
 
+start = DummyOperator(
+    task_id = 'start',
+    dag = dag_odds
+)
+
 get_matches_task = PythonOperator(
     task_id = 'get_matches',
     python_callable = get_matches,
     provide_context = True,
-    dag = dag,
+    dag = dag_odds,
 )
 
 collect_odds_task = PythonOperator(
     task_id = 'collect_odds',
     python_callable = collect_odds,
     provide_context = True,
-    dag = dag,
+    dag = dag_odds,
 )
 
 send_to_sql_task = PythonOperator(
     task_id = 'send_to_sql',
     python_callable = send_to_postgresql,
     provide_context = True,
-    dag = dag,
+    dag = dag_odds,
 )
 
-get_matches_task >> collect_odds_task >> send_to_sql_task
+end = DummyOperator(
+    task_id = 'end',
+    dag = dag_odds
+)
+
+start >> get_matches_task >> collect_odds_task >> send_to_sql_task >> end

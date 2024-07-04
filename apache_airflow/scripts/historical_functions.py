@@ -113,54 +113,34 @@ def data_to_sql(table_name, df, pg_hook, conflict_columns, update_columns = None
             conn.close()
 
 # get list of matches to collect matches stats
-def get_matches(pg_hook, european_seasons):
+def get_matches(pg_hook):
     query = '''
     SELECT fixture_id, league_id, league_season
     FROM fixtures
     WHERE fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
     '''
-    res = []
     conn = None
-    cur = None
     
     try:
-        conn = psycopg2.connect(pg_hook)
-        cur = conn.cursor()
+        conn = pg_hook.get_conn()
 
-        cur.execute(query)
-        cols = [row[0] for row in cur.description]
-        res = [dict(zip(cols, row)) for row in cur.fetchall()]
+        df = pd.read_sql_query(query,conn)
 
         # filter if league has fixtures stats available
         s_path = '/opt/airflow/data/seasons.csv'
         seasons = pd.read_csv(s_path)
         valid_leagues_seasons = set(zip(seasons[seasons['statistics_fixtures'] == True]['league_id'], 
-                                seasons[seasons['statistics_fixtures'] == True]['league_season']))
-
-        res = [row for row in res if (row['league_id'], row['league_season']) in valid_leagues_seasons]
-
-        res_f = [
-            fixture['fixture_id'] 
-            for fixture in res 
-            if not european_seasons[
-                (european_seasons['league_id']==fixture['league_id'])&
-                (european_seasons['league_season']==fixture['league_season'])
-            ].empty and european_seasons[
-                (european_seasons['league_id']==fixture['league_id'])&
-                (european_seasons['league_season']==fixture['league_season'])
-            ]['fixtures_statistics'].iloc[0]
-        ]
-
+                                seasons[seasons['statistics_fixtures'] == True]['year']))
+        
+        res_df = df[df.apply(lambda row: (int(row['league_id']), int(row['league_season'])) in valid_leagues_seasons, axis=1)]
+    
+        return list(res_df['fixture_id'])
     except Exception as e:
         print(f'Error {e} occured')
 
     finally:
-        if cur is not None:
-            cur.close()
         if conn is not None:
             conn.close()
-            
-        return res_f
 
 # get past data about teams and matches
 def get_and_preproc_historical_data():
@@ -193,9 +173,11 @@ def get_and_preproc_historical_data():
         teams_path = '/opt/airflow/data/teams.json'
         with open(teams_path, 'r') as file:
             teams_list = json.load(file)
-
+        if (len(teams_list) == 0)&(not done):
+            to_find = 'teams'
     else:
         teams_list = []
+
     # if limit of requests wasnt reached and there is still something to collect enter loop
     while (done==False)&(remaining > 500):
 
@@ -290,7 +272,7 @@ def get_and_preproc_historical_data():
         # if there are no fixtures ids in list get fixtures ids from fixtures table
         if len(matches) == 0:
 
-            matches = get_matches(pg_hook, european_seasons)
+            matches = get_matches(pg_hook)
 
         # if all fixtures stats were collected list contains only 'done'
         if matches[0] == 'done':
@@ -298,17 +280,18 @@ def get_and_preproc_historical_data():
             future_engineering(pg_hook)
             print('matches statistics collected')
         else:
-            while (len(matches) > 0) & (remaining > 0):
+            while (len(matches) > 0) & (remaining > 500):
                 fixture = matches[0]
                 params = {'fixture': fixture}
-                df, remaining = get_data(endpoint, params)
+                df, remaining_req = get_data(endpoint, params)
                 total_fix_stats_data.extend(encode_fix_stats(row, fixture) for row in df['response'])
                 matches.pop(0)
+                print(matches[0], len(matches),'left')
                 if len(matches) == 0:
                     matches[0] = 'done'
-
+                remaining = int(remaining_req)
             with open(matches_path, 'w') as file:
-                json.dump(teams_list, file)
+                json.dump(matches, file)
     # save current file to csv file
     data = {'league_id': [league], 'year': [year], 'type': [to_find]}
     current = pd.DataFrame(data)
@@ -388,6 +371,10 @@ def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fix
         print('fixtures data send')
 
     if len(fixture_stats_df) > 0:
+        fixture_stats_df = fixture_stats_df.fillna(0)
+        if 'goals_prevented' in fixture_stats_df.columns:
+            fixture_stats_df = fixture_stats_df.drop(columns={'goals_prevented'}, errors='ignore')
+        print(fixture_stats_df.head(), fixture_stats_df.info())
         conflict_col = ['fixture_id', 'team_id']
         data_to_sql('fixture_statistics', fixture_stats_df, pg_hook, conflict_col)
         print('fixtures stats data send')

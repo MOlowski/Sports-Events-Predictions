@@ -89,7 +89,7 @@ def send_to_sql(df):
         
         # Commit the changes
         conn.commit()
-        return print(f'table predictions updated')
+        return print(f'table odds updated')
     except Exception as e:
         print(f'Error {e}')
     
@@ -129,7 +129,7 @@ def preprocess_data(odd_data):
                 if match:
                     bet_number = match.group(1)
                     filtered_data['double_chance_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
-                    filtered_data['double_chance_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
+                    filtered_data['double_chance_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
             if value == 'First Half Winner':
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:

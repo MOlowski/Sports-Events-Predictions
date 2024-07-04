@@ -17,7 +17,7 @@ dag = DAG(
     'predicting_dag',
     default_args = default_args,
     description = 'DAG predicting results',
-    schedule_interval = '0 0 * * 4',
+    schedule_interval = '0 0 * * 3',
     start_date = days_ago(1),
     catchup = False,
 )
