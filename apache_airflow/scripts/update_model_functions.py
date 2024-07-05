@@ -4,9 +4,23 @@ import pandas as pd
 from datetime import datetime
 import tensorflow as tf
 from airflow.hooks.postgres_hook import PostgresHook
+from tensorflow.keras.models import load_model
 
 # add stats to fixtures table and save it in fixtures update table
 def future_engineering():
+
+    today = date.today()
+    es = pd.read_csv('/opt/airflow/data/european_seasons.csv')
+    s = pd.read_csv('/opt/airflow/data/seasons.csv')
+    seasons = pd.merge(es,s[['league_id','year','start','end']], on = ['league_id', 'year'])
+    seasons['start'] = pd.to_datetime(seasons['start']).dt.date
+    seasons['end'] = pd.to_datetime(seasons['end']).dt.date
+    current_seasons = seasons[(seasons['start']<today)&(seasons['end']>today)]
+    leagues = list(current_seasons['league_id'].unique())
+    seasons = list(current_seasons['year'].unique())
+    leagues = [int(league) for league in leagues]
+    seasons = [str(season) for season in seasons]
+    
     conn = None
     cur = None
     fixtures_df = None
@@ -19,29 +33,29 @@ def future_engineering():
         conn = pg_hook.get_conn()
         cur = conn.cursor()
         
+        query = '''
+    SELECT *
+    FROM fixtures
+    WHERE fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC') 
+    AND league_id = ANY(%s) 
+    AND league_season = ANY(%s) 
+    '''
+        fixtures_df = pd.read_sql_query(query, conn, params=(leagues, seasons))
+        if len(fixtures_df) > 0 :
+            df = add_statistics(fixtures_df)
+            
+            update_columns = [col for col in df.columns if col not in conflict_columns]
+            #insert data into tables
 
-        query = """
-            SELECT *
-            FROM fixtures
-            WHERE fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
-        """
-        
-        fixtures_df = pd.read_sql_query(query, conn)
-        
-        df = add_statistics(fixtures_df)
-        
-        update_columns = [col for col in df.columns if col not in conflict_columns]
-        #insert data into tables
+            update_set = ', '.join([f"{col} = EXCLUDED.{col}" for col in update_columns])
+            insert_query = """
+                INSERT INTO {} ({})
+                VALUES ({})
+                ON CONFLICT ({}) DO UPDATE SET {}
+            """.format('fixtures_updated', ','.join(df.columns), ','.join(['%s']*len(df.columns)), ','.join(conflict_columns), update_set)
 
-        update_set = ', '.join([f"{col} = EXCLUDED.{col}" for col in update_columns])
-        insert_query = """
-            INSERT INTO {} ({})
-            VALUES ({})
-            ON CONFLICT ({}) DO UPDATE SET {}
-        """.format('fixtures_updated', ','.join(df.columns), ','.join(['%s']*len(df.columns)), ','.join(conflict_columns), update_set)
-
-        cur.executemany(insert_query, df.values.tolist())
-        print(f'table fixtures_updated updated')
+            cur.executemany(insert_query, df.values.tolist())
+            print(f'table fixtures_updated updated')
         
         # Commit the changes
         conn.commit()
@@ -71,6 +85,7 @@ def add_statistics(fixtures_df):
     fixtures_df['teams_away_winner'] = fixtures_df.apply(
         lambda row: 3 if row['score_fulltime_home']<row['score_fulltime_away'] else (1 if row['score_fulltime_home']==row['score_fulltime_away'] else 0), axis=1
     )
+    print('added goals scored and lost')
     home = fixtures_df[[
         'fixture_date',
         'league_season',
@@ -116,7 +131,7 @@ def add_statistics(fixtures_df):
     total['points_last_5_matches'] = total.groupby('team_id')['points'].rolling(window=5, min_periods=1).sum().reset_index(level=0, drop=True)
     total['points_last_5_matches'] = total['points_last_5_matches'].fillna(0)
     total['points_last_5_matches'] = total['points_last_5_matches'].astype(int)
-
+    print('added points')
     fixtures_df = fixtures_df.merge(total[[
         'fixture_date',
         'team_id',
@@ -185,18 +200,18 @@ def get_matches(today, last_update):
         SELECT fu.*
         FROM fixtures_updated fu
         LEFT JOIN fixtures f ON fu.fixture_id = f.fixture_id
-        WHERE fixture_date >= '{}' and fixture_date <= '{}' and fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
+        WHERE f.fixture_date >= %s and f.fixture_date <= %s and f.fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
     ) a
     RIGHT JOIN predictions p ON a.fixture_id = p.fixture_id
-    '''.format(last_update, today)
+    '''
         query2 = '''
     SELECT p.*
     FROM fixtures f
     RIGHT JOIN predictions p ON f.fixture_id = p.fixture_id
-    WHERE fixture_date >= '{}' and fixture_date <= '{}' and fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
+    WHERE f.fixture_date >= %s and f.fixture_date <= %s and f.fixture_status_short IN ('FT', 'WO', 'AET', 'PEN', 'CANC')
     '''.format(last_update, today)
-        matches = pd.read_sql_query(query, conn)
-        predictions = pd.read_sql_query(query2, conn)
+        matches = pd.read_sql_query(query, conn, params=(last_update, today))
+        predictions = pd.read_sql_query(query2, conn, params=(last_update, today))
         print('got  matches')
         return matches, predictions
     except Exception as e:
@@ -226,13 +241,14 @@ def update_models():
         last_update = json.load(f)
     date_format = '%Y-%m-%d'
     last_update = datetime.strptime(last_update, date_format).date()
+    print(type(last_update), type(today))
     matches, predictions = get_matches(today, last_update)
 
     if len(matches) > 1000:
         matches_stats = add_stats(matches)
         
         # goal model
-        goal_model = tf.keras.models.load_model('/opt/airflow/models/goal_model.h5')
+        goal_model = load_model('/opt/airflow/models/goal_model.h5')
         
         X = matches_stats[[
             'day_of_week', 
@@ -305,7 +321,7 @@ def update_models():
         y_3 = matches_stats['result_double_chance_home']
         y_4 = matches_stats['result_double_chance_away']
         
-        result_model = tf.keras.models.load_model('/opt/airflow/models/result_model.h5')
+        result_model = load_model('/opt/airflow/models/result_model.h5')
         
         # Fine-tune the model using only the new data
         params = {

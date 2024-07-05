@@ -23,17 +23,21 @@ dag_odds = DAG(
     catchup = False,
 )
 
+
+
 def get_matches(**kwargs):
-    matches, start_date = get_predicted_matches()
+    matches, start_date, end_date = get_predicted_matches()
     ti = kwargs['ti']
     ti.xcom_push(key='matches', value = matches)
     ti.xcom_push(key='start_date', value = start_date)
+    ti.xcom_push(key='end_date', value = end_date)
 
 def collect_odds(**kwargs):
     ti = kwargs['ti']
     matches = ti.xcom_pull(key='matches', task_ids = 'get_matches')
     start_date = ti.xcom_pull(key='start_date', task_ids = 'get_matches')
-    odds_df = get_odds(matches, start_date)
+    end_date = ti.xcom_pull(key='end_date', task_ids = 'get_matches')
+    odds_df = get_odds(matches, start_date, end_date)
     ti.xcom_push(key='odds_df', value = odds_df)
 
 def send_to_postgresql(**kwargs):
@@ -41,10 +45,6 @@ def send_to_postgresql(**kwargs):
     odds_df = ti.xcom_pull(key='odds_df', task_ids = 'collect_odds')
     send_to_sql(odds_df)
 
-start = DummyOperator(
-    task_id = 'start',
-    dag = dag_odds
-)
 
 get_matches_task = PythonOperator(
     task_id = 'get_matches',
@@ -72,4 +72,4 @@ end = DummyOperator(
     dag = dag_odds
 )
 
-start >> get_matches_task >> collect_odds_task >> send_to_sql_task >> end
+get_matches_task >> collect_odds_task >> send_to_sql_task >> end

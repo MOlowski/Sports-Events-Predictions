@@ -45,10 +45,10 @@ start = DummyOperator(
 wait_for_odds = ExternalTaskSensor(
     task_id = 'wait_for_odds',
     external_dag_id = 'odds_dag',
-    enternal_task_id = 'end',
+    external_task_id = 'end',
     allowed_states = ['success'],
-    execution_delta = timedelta(minutes=2),
-    timeout = 120,
+    execution_delta = timedelta(minutes=1),
+    timeout = 60,
     dag = dag_bets
 )
 

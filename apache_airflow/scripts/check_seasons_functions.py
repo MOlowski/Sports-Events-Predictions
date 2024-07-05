@@ -154,6 +154,7 @@ def check():
             contests = contests[contests['country'].isin(eur_cs)]
             eur_ss = list(contests['league_id'].unique())
             eur_seasons = seasons[seasons['league_id'].isin(eur_ss)]
+            eur_seasons = eur_seasons.merge(contests[['league_id','country','name']], on='league_id')
             eur_seasons = eur_seasons[[
                 'league_id', 'name', 'country', 
                 'year', 'players', 'statistics_fixtures', 
@@ -168,6 +169,9 @@ def check():
                 json.dump(new_seasons, file)
             print(f'new {len(new_seasons)} seasons found')
             
+            if len(new_seasons) > 0:
+                remaining = get_new_seasons(new_seasons, remaining)
+
             return new_seasons, int(remaining)
     else:
         print('no requests left, couldnt get seasons')

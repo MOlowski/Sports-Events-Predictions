@@ -35,10 +35,13 @@ def get_predicted_matches():
     pg_hook = PostgresHook(postgres_conn_id='postgres_default')
     #get next friday and monday dates as start and end for query
     t = date.today()
-    start_date = t+datetime.timedelta(1) if t.weekday() == 4 else t
-    end_date = t+datetime.timedelta(1) if t.weekday() == 0 else t
+    start_date = t
     while start_date.weekday() != 4:
-        start_date += datetime.timedelta(1)
+        if start_date.weekday() < 4:
+            start_date += datetime.timedelta(1)
+        else:
+            start_date -= datetime.timedelta(1)
+    end_date = start_date
     while end_date.weekday() != 0:
         end_date += datetime.timedelta(1)
 
@@ -61,15 +64,19 @@ def get_predicted_matches():
     '''.format(start_date, end_date)
         current_matches = pd.read_sql_query(query, conn)
         
-        return current_matches, start_date
+        print(start_date, end_date, len(current_matches))
+        return current_matches, start_date, end_date
     except Exception as e:
         print(f'Error {e}')
-        return None, None
+        return None, None, None
     finally:
         if conn is not None:
             conn.close()
 
 def send_to_sql(df):
+    if len(df) > 0:
+        df = preprocess_data(df)
+
     conn = None
     cur = None
     conflict_columns = ['fixture_id']
@@ -128,8 +135,14 @@ def preprocess_data(odd_data):
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:
                     bet_number = match.group(1)
-                    filtered_data['double_chance_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
-                    filtered_data['double_chance_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
+                    if data[f'bookmakers_{bb}_bets_{bet_number}_values_0_value'] == 'Home/Draw':
+                        filtered_data['double_chance_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
+                    elif data[f'bookmakers_{bb}_bets_{bet_number}_values_0_value'] == 'Draw/Away':
+                        filtered_data['double_chance_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
+                    if (f'bookmakers_{bb}_bets_{bet_number}_values_1_odd' in data) & (data[f'bookmakers_{bb}_bets_{bet_number}_values_1_value'] == 'Draw/Away'):
+                            filtered_data['double_chance_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
+                    if f'bookmakers_{bb}_bets_{bet_number}_values_2_odd' in data:
+                        filtered_data['double_chance_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
             if value == 'First Half Winner':
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:
@@ -184,7 +197,7 @@ def encode_data(data_dict, parent_key = '', sep= '_'):
             encoded.append((new_key, val))
     return dict(encoded)
 
-def get_odds(matches, start_date):
+def get_odds(matches, start_date, end_date):
 
     #get only matches with odds available
     eur_seasons = pd.read_csv('/opt/airflow/data/european_seasons.csv')
@@ -207,13 +220,16 @@ def get_odds(matches, start_date):
                 'season':season,
                 'page':page}
         response, remaining = get_data('odds', params) 
-        date+= datetime.timedelta(1)
 
         if page != response['paging']['total']:
             page += 1
         else:
             page = 1
-            leagues_list.pop(0)
+            if date != end_date:
+                date += datetime.timedelta(1)
+            else:
+                date = start_date
+                leagues_list.pop(0)
 
         if len(response['response']) > 0:
             odds_data.extend(match for match in response['response'])
@@ -221,8 +237,5 @@ def get_odds(matches, start_date):
         remaining = int(remaining)
         done = True if len(leagues_list)==0 else False
 
-    if len(odds_data) > 0:
-        # preprocess data
-        df = preprocess_data(odds_data)
 
-    return df
+    return odds_data

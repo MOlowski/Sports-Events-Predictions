@@ -31,14 +31,14 @@ def upd_models():
     update_models()
 
 preform_fe_task = PythonOperator(
-    task_id = 'preform future engineering',
+    task_id = 'preform_future_engineering',
     python_callable = perform_fe,
     provide_context = True,
     dag = dag_update_model,
 )
 
 update_models_task = PythonOperator(
-    task_id = 'update models',
+    task_id = 'update_models',
     python_callable = upd_models,
     provide_context = True,
     dag = dag_update_model,

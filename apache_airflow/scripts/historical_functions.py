@@ -147,7 +147,6 @@ def get_and_preproc_historical_data():
     current = pd.read_csv(current_path)
     european_s_path = '/opt/airflow/data/european_seasons.csv'
     european_seasons = pd.read_csv(european_s_path)
-
     # insert parameters to be found
     league = current['league_id'][0]
     year = current['year'][0]
@@ -176,6 +175,9 @@ def get_and_preproc_historical_data():
             to_find = 'teams'
     else:
         teams_list = []
+
+    if to_find == 'fixtures/statistics':
+        done = True
 
     # if limit of requests wasnt reached and there is still something to collect enter loop
     while (done==False)&(remaining > 500):

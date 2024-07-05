@@ -11,7 +11,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(minutes=4),
 }
 
 dag_check_seasons = DAG(
@@ -29,7 +29,7 @@ def checking():
 
 
 check_task = PythonOperator(
-    task_id = 'check if there are new seasons',
+    task_id = 'check_new_seasons',
     python_callable = checking,
     provide_context = True,
     dag = dag_check_seasons,
