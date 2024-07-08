@@ -49,21 +49,18 @@ def send_to_postgresql(**kwargs):
 get_matches_task = PythonOperator(
     task_id = 'get_matches',
     python_callable = get_matches,
-    provide_context = True,
     dag = dag_odds,
 )
 
 collect_odds_task = PythonOperator(
     task_id = 'collect_odds',
     python_callable = collect_odds,
-    provide_context = True,
     dag = dag_odds,
 )
 
 send_to_sql_task = PythonOperator(
     task_id = 'send_to_sql',
     python_callable = send_to_postgresql,
-    provide_context = True,
     dag = dag_odds,
 )
 

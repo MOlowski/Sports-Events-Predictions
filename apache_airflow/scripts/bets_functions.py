@@ -1,6 +1,7 @@
 import psycopg2
 import pandas as pd
 from datetime import date, timedelta
+from airflow.hooks.postgres_hook import PostgresHook
 
 def get_odds_predictions(start, end):
 
@@ -44,7 +45,7 @@ def get_odds_predictions(start, end):
 def preprocess_data(bets):
     cols=list(bets.columns)
     bets = bets.assign(bet_name=cols[2])
-    bets = bets.rename(columns={cols[1]:'probability', cols[2]:'bet_value'})
+    bets = bets.rename(columns={cols[1]:'bet_prob', cols[2]:'bet_value'})
     return bets
 
 def bet_one_type(df, el, chance, bet, min_chance, bet_num):
@@ -244,7 +245,7 @@ def get_proper_odds():
 def send_to_sql(df):
     conn = None
     cur = None
-    conflict_columns = ['fixture_id']
+    conflict_columns = ['fixture_id', 'bet_name']
     pg_hook = PostgresHook(postgres_conn_id='postgres_default')
     try:
     

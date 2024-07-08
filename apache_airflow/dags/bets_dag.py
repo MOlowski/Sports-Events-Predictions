@@ -47,22 +47,21 @@ wait_for_odds = ExternalTaskSensor(
     external_dag_id = 'odds_dag',
     external_task_id = 'end',
     allowed_states = ['success'],
-    execution_delta = timedelta(minutes=1),
-    timeout = 60,
+    execution_delta = None,
+    timeout = 600,
+    mode='poke',
     dag = dag_bets
 )
 
 get_bets_task = PythonOperator(
     task_id = 'get_bets',
     python_callable = get_bets,
-    provide_context = True,
     dag = dag_bets,
 )
 
 send_bets_task = PythonOperator(
     task_id = 'send_bets',
     python_callable = send_to_db,
-    provide_context = True,
     dag = dag_bets,
 )
 
@@ -73,7 +72,7 @@ end = DummyOperator(
 
 delay = DateTimeSensor(
     task_id = 'delay',
-    target_time = "{{ task_instance.start_date + macros.timedelta(minutes=10) }}",
+    target_time = "{{ task_instance.start_date + macros.timedelta(minutes=1) }}",
     dag = dag_bets
 )
 
