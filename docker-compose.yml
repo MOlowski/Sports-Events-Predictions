@@ -63,6 +63,19 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
       - ./backups:/backups
     entrypoint: /bin/sh -c "while true; do pg_dump -U postgresql -h postgres preds > /backups/backup_\$(date +\%F_\%T).sql; sleep 86400; done"
+  
+  web:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    depends_on:
+      - postgresql
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:pass@postgresql/preds
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
 
 volumes:
   postgresql:

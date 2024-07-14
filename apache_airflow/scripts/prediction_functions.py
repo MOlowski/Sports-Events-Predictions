@@ -32,7 +32,7 @@ def get_current_matches():
     '''.format(start_date, end_date)
         current_matches = pd.read_sql_query(query, conn)
         print('got current matches')
-        return current_matches
+        return current_matches, end_date
     except Exception as e:
         print(f'Error {e}')
         return None, None
@@ -41,20 +41,15 @@ def get_current_matches():
             conn.close()
 
 # get last matches for each league in current matches
-def get_last_matches(leagues, seasons):
+def get_last_matches(leagues, seasons, end_date):
 
     conn = None
     pg_hook = PostgresHook(postgres_conn_id='postgres_default')
     #get next friday and monday dates as start and end for query
-    t = date.today()
-    end_date = t+datetime.timedelta(1) if t.weekday() == 0 else t
-    while end_date.weekday() != 0:
-        end_date = end_date+datetime.timedelta(1)
-        
     # get upocoming matches playing from next friday to monday
     try:
         conn = pg_hook.get_conn()
-        last_matches_date = end_date-datetime.timedelta(14)
+        last_matches_date = end_date-datetime.timedelta(28)
         query2 = '''
     SELECT *
     FROM fixtures
@@ -184,7 +179,7 @@ def add_statistics(fixtures_df):
 # function predicting matches results
 def get_preprocess_data():
 
-    current = get_current_matches()
+    current, end_date = get_current_matches()
     if len(current) == 0:
         print('no upcoming matches this weekend')
     else:
@@ -192,8 +187,9 @@ def get_preprocess_data():
         seasons = list(current['league_season'].unique())
         leagues = [int(league) for league in leagues]
         seasons = [str(season) for season in seasons]
-        last, end_date = get_last_matches(leagues, seasons)
-
+        print(end_date)
+        last, end_date = get_last_matches(leagues, seasons, end_date)
+        print(end_date)
         last = add_statistics(last)
         last = last[last['fixture_date'] > end_date]
         # add last match result and goals to columns
@@ -203,9 +199,13 @@ def get_preprocess_data():
         teams = list(last['teams_home_id'].unique())
         teams = teams + list(last['teams_away_id'].unique())
         teams = list(dict.fromkeys(teams))
-        
+
+
+        print(len(current))
+
         current = current[(current['teams_home_id'].isin(teams))&(current['teams_away_id'].isin(teams))]
         
+        print(len(current))
         # chose only needed columns
         predict_df = current[['fixture_id', 'fixture_date', 'fixture_venue_id', 'league_id', 'league_season', 'teams_home_id', 'teams_away_id']]
         

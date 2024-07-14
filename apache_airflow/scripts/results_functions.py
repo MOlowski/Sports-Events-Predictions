@@ -1,6 +1,7 @@
 from datetime import date
 import pandas as pd
 import json
+import requests
 from airflow.hooks.postgres_hook import PostgresHook
 
 def get_data(endpoint, params):
@@ -116,9 +117,13 @@ def get_results():
     with open(path, 'r') as file:
         last = json.load(file)
 
-    if not last[2]:
-        ind = to_get.index([last[0], last[1]])
-        to_get = to_get[ind:]
+    if len(last)>0:
+        if not last[2]:
+            ind = to_get.index([last[0], last[1]])
+            to_get = to_get[ind:]
+
+    if today.weekday() > 1 & len(last) == 0:
+        done = True
 
     while (remaining > 0)&(done == False):
         params = {'league' : to_get[0][0], 'year': to_get[0][1]}
@@ -136,6 +141,9 @@ def get_results():
         path = 'data/last.json'
         with open(path, 'w') as file:
             json.dump(last, file)
+    else:
+        with open(path, 'w') as file:
+            json.dump([], file)
 
     df = pd.DataFrame(fix_data)
 

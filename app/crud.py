@@ -1,25 +1,21 @@
-from sqlalchemy.orm import Session
-from . import models, schemas
-from datetime import date, timedelta
+from sqlalchemy.future import select
+from .models import Bet, Fixture
+from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date
 
-def get_bets_last_weekend(db: Session):
-    today = date.today()
-    start = today
-    while start.weekday() != 4:
-        start -= timedelta(days=1)
-    end = start
-    while end.weekday() != 0:
-        end += timedelta(days=1)
+async def get_all_bets(db: AsyncSession):
+    result = await db.execute(select(Bet))
+    return result.scalars().all()
 
-    return db.query(models.Bet).join(models.Fixture).filter(
-        and_(
-            models.Fixture.date >= start.strftime("%Y-%m-%d"),
-            models.Fixture.date <= end.strftime("%Y-%m-%d"),
+
+async def get_bets_by_fixture_and_date(db: AsyncSession, start_date: date, end_date:date):
+    result = await db.execute(
+        select(Bet)
+        .join(Fixture)
+        .filter(
+            Fixture.fixture_date >= start_date,
+            Fixture.fixture_date <= end_date
         )
-    ).all()
-
-def get_bet(db:Session, bet_id: int):
-    return db.query(models.Bet).filter(models.Bet.id == bet_id).first()
-
-
-# Define CRUD operations for Fixture, Team, and League similarly
+    )
+    bets = result.scalars().all()
+    return [bet.__dict__ for bet in bets]

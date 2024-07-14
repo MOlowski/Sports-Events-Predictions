@@ -374,8 +374,12 @@ def send_to_postgresql_historical_data(teams_df, team_stats_df, fixtures_df, fix
     if len(fixture_stats_df) > 0:
         fixture_stats_df = fixture_stats_df.fillna(0)
         if 'goals_prevented' in fixture_stats_df.columns:
-            fixture_stats_df = fixture_stats_df.drop(columns={'goals_prevented'}, errors='ignore')
-        print(fixture_stats_df.head(), fixture_stats_df.info())
+            to_drop = ['cross_attacks', 'free_kicks', 'goals', 
+                       'goal_attempts', 'substitutions', 'throwins', 
+                       'medical_treatment', 'goals_prevented', 'assists', 
+                       'counter_attacks']
+            fixture_stats_df = fixture_stats_df.drop(columns=to_drop, errors='ignore')
+            print(fixture_stats_df.columns)
         conflict_col = ['fixture_id', 'team_id']
         data_to_sql('fixture_statistics', fixture_stats_df, pg_hook, conflict_col)
         print('fixtures stats data send')

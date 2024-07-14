@@ -122,9 +122,16 @@ def preprocess_data(odd_data):
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:
                     bet_number = match.group(1)
-                    filtered_data['result_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
-                    filtered_data['result_draw'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
-                    filtered_data['result_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
+                    if data[f'bookmakers_{bb}_bets_{bet_number}_values_0_value'] == 'Home':
+                        filtered_data['result_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
+                    elif data[f'bookmakers_{bb}_bets_{bet_number}_values_0_value'] == 'Draw':
+                        filtered_data['result_draw'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
+                    if (f'bookmakers_{bb}_bets_{bet_number}_values_1_odd' in data) & (data[f'bookmakers_{bb}_bets_{bet_number}_values_1_value'] == 'Away'):
+                            filtered_data['result_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
+                    else:
+                        filtered_data['result_draw'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
+                    if f'bookmakers_{bb}_bets_{bet_number}_values_2_odd' in data:
+                        filtered_data['result_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
             if value == 'Both Teams Score':
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:
@@ -147,9 +154,16 @@ def preprocess_data(odd_data):
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:
                     bet_number = match.group(1)
-                    filtered_data['fh_result_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
-                    filtered_data['fh_result_draw'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
-                    filtered_data['fh_result_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
+                    if data[f'bookmakers_{bb}_bets_{bet_number}_values_0_value'] == 'Home':
+                        filtered_data['fh_result_home'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
+                    elif data[f'bookmakers_{bb}_bets_{bet_number}_values_0_value'] == 'Draw':
+                        filtered_data['fh_result_draw'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_0_odd']
+                    if (f'bookmakers_{bb}_bets_{bet_number}_values_1_odd' in data) & (data[f'bookmakers_{bb}_bets_{bet_number}_values_1_value'] == 'Away'):
+                            filtered_data['fh_result_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
+                    else:
+                        filtered_data['fh_result_draw'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_1_odd']
+                    if f'bookmakers_{bb}_bets_{bet_number}_values_2_odd' in data:
+                        filtered_data['fh_result_away'] = data[f'bookmakers_{bb}_bets_{bet_number}_values_2_odd']
             if value == 'Total - Home':
                 match = re.search(fr'bookmakers_{bb}_bets_(\d+)_name', key)
                 if match:
