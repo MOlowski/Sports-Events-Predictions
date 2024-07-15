@@ -24,40 +24,46 @@ class Fixture(FixtureBase):
     class Config:
         orm_mode: True
 
-class FixtureUpdated(Base):
+class FixtureUpdatedBase(BaseModel):
     __tablename__ = 'fixtures_updated'
 
-    fixture_id = Column(Integer, ForeignKey('fixtures.fixture_id'))
-    fixture_date = Column(Date, nullable=False)
-    fixture_status_long = Column(String)
-    fixture_status_short = Column(String)
-    fixture_status_elapsed = Column(String)
-    league_id = Column(Integer)
-    league_season = Column(String)
-    league_round = Column(String)
-    teams_home_id = Column(Integer)
-    teams_home_winner = Column(String)
-    teams_away_id = Column(Integer)
-    teams_away_winner = Column(String)
-    goals_home = Column(Integer)
-    goals_away = Column(Integer)
-    score_halftime_home = Column(Integer)
-    score_halftime_away = Column(Integer)
-    score_fulltime_home = Column(Integer)
-    score_fulltime_away = Column(Integer)
-    teams_home_goals_scored_home = Column(Integer)
-    teams_away_goals_scored_away = Column(Integer)
-    teams_home_goals_lost_home = Column(Integer)
-    teams_away_goals_lost_away = Column(Integer)
-    teams_home_total_goals_scored = Column(Integer)
-    teams_home_total_goals_lost = Column(Integer)
-    teams_home_points = Column(Integer)
-    teams_home_total_points = Column(Integer)
-    teams_home_standings = Column(Integer)
-    teams_home_last_five_matches_points = Column(Integer)
-    teams_away_total_goals_scored = Column(Integer)
-    teams_away_total_goals_lost = Column(Integer)
-    teams_away_points = Column(Integer)
-    teams_away_total_points = Column(Integer)
-    teams_away_standings = Column(Integer)
-    teams_away_last_five_matches_points = Column(Integer)
+    fixture_id: int
+    fixture_date: date
+    fixture_status_long : str
+    fixture_status_short : str
+    fixture_status_elapsed : str
+    league_id: int
+    league_season : str
+    league_round : str
+    teams_home_id: int
+    teams_home_winner : str
+    teams_away_id: int
+    teams_away_winner : str
+    goals_home: int
+    goals_away: int
+    score_halftime_home: int
+    score_halftime_away: int
+    score_fulltime_home: int
+    score_fulltime_away: int
+    teams_home_goals_scored_home: int
+    teams_away_goals_scored_away: int
+    teams_home_goals_lost_home: int
+    teams_away_goals_lost_away: int
+    teams_home_total_goals_scored: int
+    teams_home_total_goals_lost: int
+    teams_home_points: int
+    teams_home_total_points: int
+    teams_home_standings: int
+    teams_home_last_five_matches_points: int
+    teams_away_total_goals_scored: int
+    teams_away_total_goals_lost: int
+    teams_away_points: int
+    teams_away_total_points: int
+    teams_away_standings: int
+    teams_away_last_five_matches_points: int
+
+class FixtureUpdated(FixtureUpdatedBase):
+    id: int
+
+    class Config:
+        orm_mode: True
