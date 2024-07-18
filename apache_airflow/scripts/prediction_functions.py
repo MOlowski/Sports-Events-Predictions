@@ -260,7 +260,7 @@ def predict(predict_df):
     predict_df['fixture_date'] = pd.to_datetime(predict_df['fixture_date'])
     predict_df['day_of_week'] = predict_df['fixture_date'].dt.dayofweek
     predict_df = predict_df.merge(seasons[['league_id','type']], on='league_id', how='left')
-
+    predict_df = predict_df[~predict_df['type'].isna()]
     # load encoder and encode league type column
     label_encoder = joblib.load('/opt/airflow/models/label_encoder_league_type.pkl')
     predict_df['league_type_encoded'] = label_encoder.transform(predict_df['type'])

@@ -34,6 +34,7 @@ services:
 
     command: >
       bash -c "
+      rm -f /opt/airflow/airflow-webserver.pid &&
       airflow db init &&
       airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com &&
       airflow scheduler & airflow webserver"

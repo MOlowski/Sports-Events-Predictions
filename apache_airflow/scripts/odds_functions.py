@@ -5,6 +5,8 @@ from datetime import date
 import datetime
 from airflow.hooks.postgres_hook import PostgresHook
 import psycopg2
+import time
+import json
 
 def get_data(endpoint, params):
     
@@ -217,8 +219,15 @@ def get_odds(matches, start_date, end_date):
     eur_seasons = pd.read_csv('/opt/airflow/data/european_seasons.csv')
     matches = matches.merge(eur_seasons[['league_id','odds']], on='league_id')
     matches = matches[matches['odds']]
-    leagues_list = list(matches['league_id'].unique())
 
+    with open ('/opt/airflow/data/odds.json', 'r') as f:
+        left = json.load(f)
+    if len(left[1]) > 0:
+        if left[0].isoformat() == start_date:
+            leagues_list = left
+
+    leagues_list = list(matches['league_id'].unique())
+    print(f"{len(leagues_list)*4} requests needed")
     odds_data = []
     remaining = 10000
     done = False
@@ -226,9 +235,9 @@ def get_odds(matches, start_date, end_date):
     page = 1
 
     while remaining > 0 and not done:
-        print(leagues_list[0])
+
         season = int(eur_seasons[eur_seasons['league_id']==leagues_list[0]]['year'].max())
-        print(season)
+        print(leagues_list[0], season, date)
         params = {'league':leagues_list[0],
                 'date':date,
                 'season':season,
@@ -244,12 +253,19 @@ def get_odds(matches, start_date, end_date):
             else:
                 date = start_date
                 leagues_list.pop(0)
-
+        time.sleep(6)
         if len(response['response']) > 0:
             odds_data.extend(match for match in response['response'])
 
         remaining = int(remaining)
         done = True if len(leagues_list)==0 else False
 
+    if done:
+        print('whole odds were collected for upcoming matches')
+    else:
+        print('not every odd were collected for upcoming matches')
+    
+    with open ('/opt/airflow/data/odds.json', 'w') as f:
+        json.dump((start_date.isoformat(), leagues_list), f)
 
     return odds_data
