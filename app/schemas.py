@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
+from typing import Optional
 
 class BetBase(BaseModel):
     fixture_id: int
@@ -7,7 +8,11 @@ class BetBase(BaseModel):
     bet_value: float
     bet_name: str
     bet_number: int
-
+    fixture_date: Optional[date]
+    team_home_name: Optional[str]
+    league_name: Optional[str]
+    league_country: Optional[str]
+    
 class Bet(BetBase):
     id: int
 
@@ -17,6 +22,8 @@ class Bet(BetBase):
 class FixtureBase(BaseModel):
     fixture_id: int
     fixture_date: date
+    league_id: int
+    teams_home_id: int
 
 class Fixture(FixtureBase):
     bets: list[Bet] = []
@@ -67,3 +74,25 @@ class FixtureUpdated(FixtureUpdatedBase):
 
     class Config:
         orm_mode: True
+
+class BetResultBase(BaseModel):
+    fixture_id: int
+    bet_name: str
+    bet_number: int
+    match_result: bool
+    bet_result: bool
+    bet_value: Optional[float]
+class BetResult(BetResultBase):
+    id: int
+
+    class Config:
+        orm_mode: True
+
+class TeamBase(BaseModel):
+    team_id: int
+    team_name: str
+
+class League(BaseModel):
+    league_id: int
+    name: str
+    country: str
