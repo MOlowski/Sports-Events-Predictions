@@ -3,16 +3,24 @@ import numpy as np
 import pandas as pd
 import json
 import os
+from dotenv import load_dotenv
 import time
 from airflow.hooks.postgres_hook import PostgresHook
 
 # function requesting data from Football API
 def get_data(endpoint, params):
     
+    load_dotenv()  # Load environment variables from .env file
+
+    api_key = os.getenv('API_KEY')
+
+    if api_key is None:
+        raise ValueError("API key not set.")
+
     URL = "https://v3.football.api-sports.io/"
     headers = {
 	'x-rapidapi-host': "v3.football.api-sports.io",
-    'x-rapidapi-key': "fb2140228973d644db847895c454c22b"
+    'x-rapidapi-key': api_key
     }
     
     response = requests.get(
